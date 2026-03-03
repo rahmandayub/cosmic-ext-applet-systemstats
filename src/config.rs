@@ -2,6 +2,87 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 
+/// Helper to parse hex color string (with or without # prefix) to u32
+fn parse_hex_color(s: &str) -> u32 {
+    let s = s.trim().trim_start_matches('#');
+    u32::from_str_radix(s, 16).unwrap_or(0x00B4D8)
+}
+
+/// Label configuration with name and color
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct LabelConfig {
+    /// Display name for the label (e.g., "CPU:", "GPU:")
+    #[serde(default)]
+    pub name: String,
+    /// Hex color code (e.g., "00B4D8" or "#00B4D8")
+    #[serde(default)]
+    pub color: String,
+}
+
+impl LabelConfig {
+    /// Get the color as a u32 value
+    pub fn color_hex(&self) -> u32 {
+        parse_hex_color(&self.color)
+    }
+}
+
+impl Default for LabelConfig {
+    fn default() -> Self {
+        Self {
+            name: String::new(),
+            color: String::new(),
+        }
+    }
+}
+
+/// Label configurations for all monitors
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Labels {
+    #[serde(default)]
+    pub cpu: LabelConfig,
+    #[serde(default)]
+    pub cpu_temp: LabelConfig,
+    #[serde(default)]
+    pub gpu_temp: LabelConfig,
+    #[serde(default)]
+    pub ram: LabelConfig,
+    #[serde(default)]
+    pub network_download: LabelConfig,
+    #[serde(default)]
+    pub network_upload: LabelConfig,
+}
+
+impl Default for Labels {
+    fn default() -> Self {
+        Self {
+            cpu: LabelConfig {
+                name: "CPU: ".to_string(),
+                color: "00B4D8".to_string(),  // Blue
+            },
+            cpu_temp: LabelConfig {
+                name: "TEMP: ".to_string(),
+                color: "FFD700".to_string(),  // Yellow
+            },
+            gpu_temp: LabelConfig {
+                name: "GPU: ".to_string(),
+                color: "00D4AA".to_string(),  // Teal
+            },
+            ram: LabelConfig {
+                name: "RAM: ".to_string(),
+                color: "9B5DE5".to_string(),  // Purple
+            },
+            network_download: LabelConfig {
+                name: "".to_string(),  // Not used, just for color
+                color: "00B4D8".to_string(),  // Blue for download arrow
+            },
+            network_upload: LabelConfig {
+                name: "".to_string(),  // Not used, just for color
+                color: "FB8500".to_string(),  // Orange for upload arrow
+            },
+        }
+    }
+}
+
 /// CPU usage thresholds (percentage)
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct CpuThresholds {
@@ -96,6 +177,9 @@ pub struct Config {
 
     #[serde(default)]
     pub thresholds: Thresholds,
+
+    #[serde(default)]
+    pub labels: Labels,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -122,6 +206,7 @@ impl Default for Config {
             refresh_interval_ms: default_refresh_interval(),
             monitors: MonitorToggles::default(),
             thresholds: Thresholds::default(),
+            labels: Labels::default(),
         }
     }
 }
@@ -223,8 +308,8 @@ network = {}
 
 [thresholds.cpu]
 # CPU usage thresholds (percentage)
-# Values < low_max = Low (green)
-# Values between low_max and high_min = Medium (yellow)
+# Values < low_max = Low (blue)
+# Values between low_max and high_min = Medium (orange)
 # Values >= high_min = High (red)
 low_max = {}
 high_min = {}
@@ -238,6 +323,34 @@ high_min = {}
 # Temperature thresholds (Celsius)
 low_max = {}
 high_min = {}
+
+[labels.cpu]
+# CPU usage label name and color (hex without #)
+name = "{}"
+color = "{}"
+
+[labels.cpu_temp]
+# CPU temperature label name and color
+name = "{}"
+color = "{}"
+
+[labels.gpu_temp]
+# GPU temperature label name and color
+name = "{}"
+color = "{}"
+
+[labels.ram]
+# Memory label name and color
+name = "{}"
+color = "{}"
+
+[labels.network_download]
+# Network download arrow color (name is not used)
+color = "{}"
+
+[labels.network_upload]
+# Network upload arrow color (name is not used)
+color = "{}"
 "#,
             config.refresh_interval_ms,
             config.monitors.cpu_usage,
@@ -250,7 +363,17 @@ high_min = {}
             config.thresholds.memory.low_max,
             config.thresholds.memory.high_min,
             config.thresholds.temperature.low_max,
-            config.thresholds.temperature.high_min
+            config.thresholds.temperature.high_min,
+            config.labels.cpu.name,
+            config.labels.cpu.color,
+            config.labels.cpu_temp.name,
+            config.labels.cpu_temp.color,
+            config.labels.gpu_temp.name,
+            config.labels.gpu_temp.color,
+            config.labels.ram.name,
+            config.labels.ram.color,
+            config.labels.network_download.color,
+            config.labels.network_upload.color
         );
 
         fs::write(path, config_content)

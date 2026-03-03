@@ -1,12 +1,14 @@
 //! Color utilities for status-based theming
 //!
 //! Provides status detection (Low/Medium/High) based on configurable thresholds
-//! and returns appropriate colors for each status level.
+//! and returns appropriate colors that integrate with COSMIC theme.
 //!
-//! Colors are fixed to ensure visibility in both light and dark themes:
-//! - Low (Green): #4CAF50
-//! - Medium (Yellow/Amber): #FFC107
-//! - High (Red): #F44336
+//! Color semantics follow system monitoring conventions:
+//! - Low (Blue): Normal operation, all systems operational
+//! - Medium (Orange): Warning, attention may be needed
+//! - High (Red): Critical, action required
+//!
+//! Colors are chosen to work well in both light and dark themes.
 
 use cosmic::iced::Color;
 
@@ -17,7 +19,7 @@ use cosmic::iced::Color;
 ///
 /// # Example
 /// ```
-/// let green = hex_color(0x4CAF50);
+/// let blue = hex_color(0x00B4D8);
 /// ```
 fn hex_color(hex: u32) -> Color {
     Color::from_rgb(
@@ -30,9 +32,9 @@ fn hex_color(hex: u32) -> Color {
 /// Status levels for color-coding
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Status {
-    /// Low usage/normal state - displayed in green
+    /// Low usage/normal state - displayed in blue
     Low,
-    /// Medium usage/warning state - displayed in yellow/amber
+    /// Medium usage/warning state - displayed in orange
     Medium,
     /// High usage/critical state - displayed in red
     High,
@@ -57,24 +59,16 @@ impl Status {
         }
     }
 
-    /// Get the appropriate color for this status
-    /// Returns fixed colors that work well in both light and dark themes
-    pub fn to_color(self) -> Color {
+    /// Get color only if status is Medium or High (warning state)
+    /// Returns None for Low (normal) status
+    ///
+    /// Use this when you want to color values only in warning states.
+    pub fn warning_color(self) -> Option<Color> {
         match self {
-            Status::Low => hex_color(0x4CAF50),      // Green
-            Status::Medium => hex_color(0xFFC107),   // Amber
-            Status::High => hex_color(0xF44336),     // Red
+            Status::Low => None,
+            Status::Medium => Some(hex_color(0xFB8500)),
+            Status::High => Some(hex_color(0xD62828)),
         }
-    }
-
-    /// Get network download color (green)
-    pub fn network_download_color() -> Color {
-        hex_color(0x4CAF50)  // Green
-    }
-
-    /// Get network upload color (amber)
-    pub fn network_upload_color() -> Color {
-        hex_color(0xFFC107)   // Amber
     }
 }
 

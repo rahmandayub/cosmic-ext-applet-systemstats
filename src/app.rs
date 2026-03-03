@@ -6,19 +6,37 @@ use cosmic::widget::{autosize, text};
 use cosmic::Element;
 use std::time::Duration;
 
-use crate::color::Status;
 use crate::config::Config;
 use crate::formatting::*;
 use crate::monitors::MonitorStats;
 
 /// Create colored text using container with text_color style
-fn colored_text<'a>(content: String, color: Color) -> Element<'a, Message> {
-    container(text(content))
+fn colored_text<'a, S: Into<String>>(content: S, color: Color) -> Element<'a, Message> {
+    container(text(content.into()))
         .style(move |_| container::Style {
             text_color: Some(color),
             ..Default::default()
         })
         .into()
+}
+
+/// Create text with optional color - uses default theme color if color is None
+fn maybe_colored_text<'a, S: Into<String>>(content: S, color: Option<Color>) -> Element<'a, Message> {
+    container(text(content.into()))
+        .style(move |_| container::Style {
+            text_color: color,
+            ..Default::default()
+        })
+        .into()
+}
+
+/// Helper to convert hex color (u32) to Color
+fn hex_to_color(hex: u32) -> Color {
+    Color::from_rgb(
+        ((hex >> 16) & 0xFF) as f32 / 255.0,
+        ((hex >> 8) & 0xFF) as f32 / 255.0,
+        (hex & 0xFF) as f32 / 255.0,
+    )
 }
 
 const ID: &str = "com.github.rylan-x.systemstats";
@@ -88,7 +106,11 @@ impl cosmic::Application for SystemStats {
                 self.config.thresholds.cpu.high_min
             );
             add_separator(&mut row_children);
-            row_children.push(colored_text(format!("CPU: {}", formatted), status.to_color()));
+            // Title with configurable name and color, value colored only on warning (orange/red)
+            let value_color = status.warning_color();
+            let label_color = hex_to_color(self.config.labels.cpu.color_hex());
+            row_children.push(colored_text(&self.config.labels.cpu.name, label_color));
+            row_children.push(maybe_colored_text(formatted, value_color));
         }
 
         // CPU Temperature
@@ -100,7 +122,11 @@ impl cosmic::Application for SystemStats {
                     self.config.thresholds.temperature.high_min
                 );
                 add_separator(&mut row_children);
-                row_children.push(colored_text(formatted, status.to_color()));
+                // Title with configurable name and color, value colored only on warning
+                let value_color = status.warning_color();
+                let label_color = hex_to_color(self.config.labels.cpu_temp.color_hex());
+                row_children.push(colored_text(&self.config.labels.cpu_temp.name, label_color));
+                row_children.push(maybe_colored_text(formatted, value_color));
             }
         }
 
@@ -113,7 +139,11 @@ impl cosmic::Application for SystemStats {
                     self.config.thresholds.temperature.high_min
                 );
                 add_separator(&mut row_children);
-                row_children.push(colored_text(format!("GPU: {}", formatted), status.to_color()));
+                // Title with configurable name and color, value colored only on warning
+                let value_color = status.warning_color();
+                let label_color = hex_to_color(self.config.labels.gpu_temp.color_hex());
+                row_children.push(colored_text(&self.config.labels.gpu_temp.name, label_color));
+                row_children.push(maybe_colored_text(formatted, value_color));
             }
         }
 
@@ -121,14 +151,19 @@ impl cosmic::Application for SystemStats {
         if self.config.monitors.memory {
             let used_gb = self.monitors.memory.used_gb();
             let total_gb = self.monitors.memory.total_gb();
-            let (formatted, status) = format_memory_gb_with_status(
+            let (formatted, _) = format_memory_gb_with_status(
                 used_gb,
                 total_gb,
                 self.config.thresholds.memory.low_max,
                 self.config.thresholds.memory.high_min
             );
             add_separator(&mut row_children);
-            row_children.push(colored_text(format!("RAM: {}/{}", formatted, format_memory_gb(total_gb)), status.to_color()));
+            // Title with configurable name and color, values in default color
+            let label_color = hex_to_color(self.config.labels.ram.color_hex());
+            row_children.push(colored_text(&self.config.labels.ram.name, label_color));
+            row_children.push(text(formatted).into());
+            row_children.push(text("/").into());
+            row_children.push(text(format_memory_gb(total_gb)).into());
         }
 
         // Network
@@ -136,10 +171,13 @@ impl cosmic::Application for SystemStats {
             let download_speed = format_network_speed(self.monitors.network.download_bps());
             let upload_speed = format_network_speed(self.monitors.network.upload_bps());
             add_separator(&mut row_children);
-            // Download in green
-            row_children.push(colored_text(format!("↓{}", download_speed), Status::network_download_color()));
-            // Upload in amber
-            row_children.push(colored_text(format!(" ↑{}", upload_speed), Status::network_upload_color()));
+            // Only arrows are colored (configurable separately), values in default color
+            let download_color = hex_to_color(self.config.labels.network_download.color_hex());
+            let upload_color = hex_to_color(self.config.labels.network_upload.color_hex());
+            row_children.push(colored_text("↓", download_color));
+            row_children.push(text(download_speed).into());
+            row_children.push(colored_text(" ↑", upload_color));
+            row_children.push(text(upload_speed).into());
         }
 
         // If no elements, show empty
