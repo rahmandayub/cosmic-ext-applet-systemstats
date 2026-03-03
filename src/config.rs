@@ -2,6 +2,90 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 
+/// CPU usage thresholds (percentage)
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct CpuThresholds {
+    #[serde(default = "default_cpu_low_max")]
+    pub low_max: f32,
+    #[serde(default = "default_cpu_high_min")]
+    pub high_min: f32,
+}
+
+impl Default for CpuThresholds {
+    fn default() -> Self {
+        Self {
+            low_max: default_cpu_low_max(),
+            high_min: default_cpu_high_min(),
+        }
+    }
+}
+
+fn default_cpu_low_max() -> f32 { 40.0 }
+fn default_cpu_high_min() -> f32 { 75.0 }
+
+/// Memory usage thresholds (percentage)
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct MemoryThresholds {
+    #[serde(default = "default_memory_low_max")]
+    pub low_max: f32,
+    #[serde(default = "default_memory_high_min")]
+    pub high_min: f32,
+}
+
+impl Default for MemoryThresholds {
+    fn default() -> Self {
+        Self {
+            low_max: default_memory_low_max(),
+            high_min: default_memory_high_min(),
+        }
+    }
+}
+
+fn default_memory_low_max() -> f32 { 50.0 }
+fn default_memory_high_min() -> f32 { 80.0 }
+
+/// Temperature thresholds (Celsius)
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct TemperatureThresholds {
+    #[serde(default = "default_temp_low_max")]
+    pub low_max: f32,
+    #[serde(default = "default_temp_high_min")]
+    pub high_min: f32,
+}
+
+impl Default for TemperatureThresholds {
+    fn default() -> Self {
+        Self {
+            low_max: default_temp_low_max(),
+            high_min: default_temp_high_min(),
+        }
+    }
+}
+
+fn default_temp_low_max() -> f32 { 60.0 }
+fn default_temp_high_min() -> f32 { 80.0 }
+
+/// All threshold configurations
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct Thresholds {
+    #[serde(default)]
+    pub cpu: CpuThresholds,
+    #[serde(default)]
+    pub memory: MemoryThresholds,
+    #[serde(default)]
+    pub temperature: TemperatureThresholds,
+}
+
+impl Default for Thresholds {
+    fn default() -> Self {
+        Self {
+            cpu: CpuThresholds::default(),
+            memory: MemoryThresholds::default(),
+            temperature: TemperatureThresholds::default(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Config {
     #[serde(default = "default_refresh_interval")]
@@ -9,6 +93,9 @@ pub struct Config {
 
     #[serde(default)]
     pub monitors: MonitorToggles,
+
+    #[serde(default)]
+    pub thresholds: Thresholds,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -34,6 +121,7 @@ impl Default for Config {
         Self {
             refresh_interval_ms: default_refresh_interval(),
             monitors: MonitorToggles::default(),
+            thresholds: Thresholds::default(),
         }
     }
 }
@@ -132,13 +220,37 @@ gpu_temperature = {}
 memory = {}
 
 network = {}
+
+[thresholds.cpu]
+# CPU usage thresholds (percentage)
+# Values < low_max = Low (green)
+# Values between low_max and high_min = Medium (yellow)
+# Values >= high_min = High (red)
+low_max = {}
+high_min = {}
+
+[thresholds.memory]
+# Memory usage thresholds (percentage)
+low_max = {}
+high_min = {}
+
+[thresholds.temperature]
+# Temperature thresholds (Celsius)
+low_max = {}
+high_min = {}
 "#,
             config.refresh_interval_ms,
             config.monitors.cpu_usage,
             config.monitors.cpu_temperature,
             config.monitors.gpu_temperature,
             config.monitors.memory,
-            config.monitors.network
+            config.monitors.network,
+            config.thresholds.cpu.low_max,
+            config.thresholds.cpu.high_min,
+            config.thresholds.memory.low_max,
+            config.thresholds.memory.high_min,
+            config.thresholds.temperature.low_max,
+            config.thresholds.temperature.high_min
         );
 
         fs::write(path, config_content)
