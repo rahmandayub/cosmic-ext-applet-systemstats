@@ -45,6 +45,10 @@ pub struct Labels {
     #[serde(default)]
     pub gpu_temp: LabelConfig,
     #[serde(default)]
+    pub gpu_usage: LabelConfig,
+    #[serde(default)]
+    pub gpu_vram: LabelConfig,
+    #[serde(default)]
     pub ram: LabelConfig,
     #[serde(default)]
     pub network_download: LabelConfig,
@@ -66,6 +70,14 @@ impl Default for Labels {
             gpu_temp: LabelConfig {
                 name: "GPU: ".to_string(),
                 color: "00D4AA".to_string(),  // Teal
+            },
+            gpu_usage: LabelConfig {
+                name: "".to_string(),  // Not used, GPU label is auto-generated (GPU1, GPU2, etc.)
+                color: "00D4AA".to_string(),  // Teal
+            },
+            gpu_vram: LabelConfig {
+                name: "VRAM: ".to_string(),
+                color: "FF6B9D".to_string(),  // Pink
             },
             ram: LabelConfig {
                 name: "RAM: ".to_string(),
@@ -146,11 +158,34 @@ impl Default for TemperatureThresholds {
 fn default_temp_low_max() -> f32 { 60.0 }
 fn default_temp_high_min() -> f32 { 80.0 }
 
+/// GPU usage thresholds (percentage)
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct GpuThresholds {
+    #[serde(default = "default_gpu_low_max")]
+    pub low_max: f32,
+    #[serde(default = "default_gpu_high_min")]
+    pub high_min: f32,
+}
+
+impl Default for GpuThresholds {
+    fn default() -> Self {
+        Self {
+            low_max: default_gpu_low_max(),
+            high_min: default_gpu_high_min(),
+        }
+    }
+}
+
+fn default_gpu_low_max() -> f32 { 50.0 }
+fn default_gpu_high_min() -> f32 { 85.0 }
+
 /// All threshold configurations
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Thresholds {
     #[serde(default)]
     pub cpu: CpuThresholds,
+    #[serde(default)]
+    pub gpu: GpuThresholds,
     #[serde(default)]
     pub memory: MemoryThresholds,
     #[serde(default)]
@@ -161,6 +196,7 @@ impl Default for Thresholds {
     fn default() -> Self {
         Self {
             cpu: CpuThresholds::default(),
+            gpu: GpuThresholds::default(),
             memory: MemoryThresholds::default(),
             temperature: TemperatureThresholds::default(),
         }
@@ -194,6 +230,12 @@ pub struct MonitorToggles {
     pub gpu_temperature: bool,
 
     #[serde(default = "default_true")]
+    pub gpu_usage: bool,
+
+    #[serde(default = "default_true")]
+    pub gpu_vram: bool,
+
+    #[serde(default = "default_true")]
     pub memory: bool,
 
     #[serde(default = "default_true")]
@@ -217,6 +259,8 @@ impl Default for MonitorToggles {
             cpu_usage: true,
             cpu_temperature: true,
             gpu_temperature: true,
+            gpu_usage: true,
+            gpu_vram: true,
             memory: true,
             network: true,
         }
@@ -302,6 +346,10 @@ cpu_temperature = {}
 
 gpu_temperature = {}
 
+gpu_usage = {}
+
+gpu_vram = {}
+
 memory = {}
 
 network = {}
@@ -311,6 +359,11 @@ network = {}
 # Values < low_max = Low (blue)
 # Values between low_max and high_min = Medium (orange)
 # Values >= high_min = High (red)
+low_max = {}
+high_min = {}
+
+[thresholds.gpu]
+# GPU usage thresholds (percentage)
 low_max = {}
 high_min = {}
 
@@ -339,6 +392,15 @@ color = "{}"
 name = "{}"
 color = "{}"
 
+[labels.gpu_usage]
+# GPU usage label color (name is not used - label is auto-generated as GPU1, GPU2, etc.)
+color = "{}"
+
+[labels.gpu_vram]
+# GPU VRAM label name and color
+name = "{}"
+color = "{}"
+
 [labels.ram]
 # Memory label name and color
 name = "{}"
@@ -356,10 +418,14 @@ color = "{}"
             config.monitors.cpu_usage,
             config.monitors.cpu_temperature,
             config.monitors.gpu_temperature,
+            config.monitors.gpu_usage,
+            config.monitors.gpu_vram,
             config.monitors.memory,
             config.monitors.network,
             config.thresholds.cpu.low_max,
             config.thresholds.cpu.high_min,
+            config.thresholds.gpu.low_max,
+            config.thresholds.gpu.high_min,
             config.thresholds.memory.low_max,
             config.thresholds.memory.high_min,
             config.thresholds.temperature.low_max,
@@ -370,6 +436,9 @@ color = "{}"
             config.labels.cpu_temp.color,
             config.labels.gpu_temp.name,
             config.labels.gpu_temp.color,
+            config.labels.gpu_usage.color,
+            config.labels.gpu_vram.name,
+            config.labels.gpu_vram.color,
             config.labels.ram.name,
             config.labels.ram.color,
             config.labels.network_download.color,

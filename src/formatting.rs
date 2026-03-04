@@ -13,16 +13,15 @@ pub fn format_memory_gb(value: f32) -> String {
 }
 
 /// Auto-switches to Gbps when >= 1000 Mbps
+/// Always uses two decimal places for consistent width
 pub fn format_network_speed(bytes_per_sec: u64) -> String {
     let mbps = bytes_per_sec as f64 / 125_000.0;
 
     if mbps >= 1000.0 {
         let gbps = mbps / 1000.0;
         format!("{:.2} Gbps", gbps)
-    } else if mbps < 0.5 {
-        format!("0 Mbps")
     } else {
-        format!("{:.1} Mbps", mbps)
+        format!("{:.2} Mbps", mbps)
     }
 }
 

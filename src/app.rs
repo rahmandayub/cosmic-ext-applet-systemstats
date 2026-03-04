@@ -147,6 +147,44 @@ impl cosmic::Application for SystemStats {
             }
         }
 
+        // GPU Usage
+        if self.config.monitors.gpu_usage {
+            if let Some(usage) = self.monitors.gpu.usage() {
+                let (formatted, status) = format_percentage_with_status(
+                    usage,
+                    self.config.thresholds.gpu.low_max,
+                    self.config.thresholds.gpu.high_min
+                );
+                add_separator(&mut row_children);
+                let value_color = status.warning_color();
+                let label_color = hex_to_color(self.config.labels.gpu_usage.color_hex());
+                
+                // Show GPU indicator (GPU1, GPU2, etc. for multi-GPU, or just "GPU: " for single)
+                if self.monitors.gpu.device_count() > 1 {
+                    let gpu_indicator = format!("GPU{}: ", self.monitors.gpu.selected_index_display());
+                    row_children.push(colored_text(gpu_indicator, label_color));
+                } else {
+                    row_children.push(colored_text("GPU: ", label_color));
+                }
+                row_children.push(maybe_colored_text(formatted, value_color));
+            }
+        }
+
+        // GPU VRAM
+        if self.config.monitors.gpu_vram {
+            if let (Some(used), Some(total)) = (
+                self.monitors.gpu.vram_used_gb(),
+                self.monitors.gpu.vram_total_gb()
+            ) {
+                add_separator(&mut row_children);
+                let label_color = hex_to_color(self.config.labels.gpu_vram.color_hex());
+                row_children.push(colored_text(&self.config.labels.gpu_vram.name, label_color));
+                row_children.push(text(format_memory_gb(used)).into());
+                row_children.push(text("/").into());
+                row_children.push(text(format_memory_gb(total)).into());
+            }
+        }
+
         // Memory
         if self.config.monitors.memory {
             let used_gb = self.monitors.memory.used_gb();
@@ -191,7 +229,7 @@ impl cosmic::Application for SystemStats {
             .spacing(0);
 
         let limits = Limits::NONE
-            .max_width(600.0)
+            .max_width(1500.0)
             .min_height(1.0)
             .max_height(128.0);
 
